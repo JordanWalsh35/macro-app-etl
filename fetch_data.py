@@ -23,9 +23,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from sqlalchemy import create_engine
 
+
 # Add parser logic to differentiate between initial run and update runs
 parser = argparse.ArgumentParser(description="ETL script for macro data.")
 parser.add_argument("--initial", action="store_true", help="Run full load and recreate tables.")
+parser.add_argument("--debug", action="store_true", help="Runs script in debug mode which saves to Excel instead of SQL")
 args = parser.parse_args()
 
 # Add logging config
@@ -39,6 +41,7 @@ logging.basicConfig(
 )
 
 # Define the SQL engine
+load_dotenv()
 POSTGRES_PW = os.getenv("POSTGRES_PW")
 engine = create_engine(f"postgresql://postgres:{POSTGRES_PW}@localhost:5432/macro_data")
 
@@ -78,6 +81,7 @@ try:
     m2_btc_df = pd.merge(df_m2, df_btc, on="Date", how="outer").sort_values("Date")
     m2_btc_df.set_index("Date", inplace=True)
     all_data["global_m2_btc"] = m2_btc_df
+    logging.info("BTC and global M2 data fetched.")
 except Exception as e:
     logging.error(f"Failed to fetch BTC/Global M2 data: \n{e}")
 
@@ -126,7 +130,6 @@ finally:
 """
 
 # Fed Liquidity Data
-load_dotenv() # Load API key from .env file
 FRED_API_KEY = os.getenv("FRED_API_KEY")
 # Initialize FRED API
 fred = Fred(api_key=FRED_API_KEY)
@@ -149,6 +152,7 @@ liquidity_df["Fed Balance Sheet"] = liquidity_df["Fed Balance Sheet"]/1000
 # Calculate Fed Net Liquidity Column
 liquidity_df["Fed Net Liquidity"] = liquidity_df["Fed Balance Sheet"] - liquidity_df["TGA"] - liquidity_df["RRP"]
 all_data["fed_liquidity"] = liquidity_df
+logging.info("Liquidity data fetched.")
 
 
 # Nasdaq Composite Index
@@ -163,6 +167,7 @@ nasdaq_df["Nasdaq YoY%"] = nasdaq_df["Nasdaq"].pct_change(periods=52) * 100
 # Drop missing values again
 nasdaq_df = nasdaq_df.dropna()
 all_data["nasdaq"] = nasdaq_df
+logging.info("Nasdaq data fetched.")
 
 
 # Gold Spot Price
@@ -200,6 +205,7 @@ for date, row in gld.loc[gold_spot.index[-1]:].iterrows():
 extended_gold = extended_gold.sort_index()
 # Add to dictionary
 all_data["gold"] = extended_gold
+logging.info("Gold data fetched.")
 
 
 # Dollar Reserves (IMF)
@@ -230,6 +236,7 @@ else:
 # Add to dictionary
 if dollar_reserves is not None:
     all_data["dollar_reserves"] = dollar_reserves
+    logging.info("Dollar Reserves data fetched.")
     
     
 # International Debt Securities (BIS)
@@ -272,6 +279,7 @@ debt_securities = debt_securities / 1000
 # Add to dictionary
 if not debt_securities.empty:
     all_data["debt_securities"] = debt_securities
+    logging.info("Debt Securities data fetched.")
 
 
 # European Indices
@@ -292,6 +300,7 @@ european_indices = european_indices.resample("W-FRI").last()
 european_indices = european_indices.rename(columns={"^GDAXI":"DAX","^FCHI":"CAC40"})
 # Add to dictionary
 all_data["european_indices"] = european_indices
+logging.info("European Indices data fetched.")
 
 
 # Financial Conditions
@@ -321,6 +330,7 @@ fed_fci_df.index.name = "Date"
 # Add to all_data dictionary
 all_data["financial_conditions"] = fci_df
 all_data["fed_fci"] = fed_fci_df
+logging.info("Financial Conditions data fetched.")
 
 
 # Economic Variables (Monthly)
@@ -350,6 +360,7 @@ economy_df["Initial Job Claims"] = job_claims
 # Shorten to data after 1977 to reduce missing values
 economy_df = economy_df[economy_df.index > "1977-12-31"]
 all_data["economic_data"] = economy_df
+logging.info("Economic Conditions data fetched.")
 
 
 # Banking
@@ -379,6 +390,7 @@ banking_df = pd.merge(banking_df, bank_temp, on='Date', how='left')
 banking_df["Consumer Credit"] = banking_df["Consumer Credit"]/1000
 # Add to all_data dictionary
 all_data["banking"] = banking_df
+logging.info("Banking data fetched.")
 
 
 # Interest Rates
@@ -396,6 +408,7 @@ rates_df.index.name = "Date"
 rates_df = rates_df[rates_df.index > "1998-01-01"]
 #rates_df = rates_df.resample("ME").mean()
 all_data["interest_rates"] = rates_df
+logging.info("Interest Rate data fetched.")
 
 
 # r star (r*)
@@ -421,6 +434,7 @@ if start_row:
     r_star.index = r_star.index + pd.offsets.QuarterEnd(0)
     # Add to all_date dictionary
     all_data["rstar"] = r_star
+    logging.info("rstar data fetched.")
 else:
     # If no start_row then there must be a change in the structure of the file
     logging.info("rstar data not found, file structure must have changed. Please investigate!")
@@ -442,6 +456,7 @@ inflation_df.index.name = "Date"
 # Data automatically assumes 1st of month -> change to month end
 inflation_df.index = inflation_df.index + pd.offsets.MonthEnd(0)
 all_data["inflation"] = inflation_df
+logging.info("Inflation data fetched.")
 
 
 # Government Spending (Quarterly)
@@ -464,6 +479,7 @@ govt_df = govt_df[govt_df.index > "1966-03-01"]
 govt_df["Federal Govt Debt"] = govt_df["Federal Govt Debt"] / 1000 # Convert to billions
 # Add to dictionary
 all_data["government_spending"] = govt_df
+logging.info("Government Spending data fetched.")
 
 
 # Other Quarterly Datasets
@@ -499,6 +515,7 @@ quarterly_df.index = quarterly_df.index + pd.offsets.QuarterEnd(0)
 quarterly_df = quarterly_df[quarterly_df.index > "1980-01-01"]
 # Add to dictionary
 all_data["quarterly_data"] = quarterly_df
+logging.info("Quarterly data fetched.")
 
 
 # Other Monthly Datasets
@@ -524,6 +541,7 @@ monthly_df.index = monthly_df.index + pd.offsets.MonthEnd(0)
 monthly_df = monthly_df[monthly_df.index > "1980-01-01"]
 # Add to dictionary
 all_data["monthly_data"] = monthly_df
+logging.info("Monthly data fetched.")
 
 
 # Annual Data
@@ -536,13 +554,14 @@ annual_data = {
 # Create empty dataframe and loop through variables
 annual_df = pd.DataFrame()
 for series_name, series_id in annual_data.items():
-    annual_df[series_name] = fred.get_series(series_id) 
+    annual_df[series_name] = fred.get_series(series_id)
 # Set index name, move to year-end and drop NaN
 annual_df.index.name = "Date"
 annual_df.index = annual_df.index + pd.offsets.YearEnd(0)
 annual_df = annual_df.dropna()
 # Add to dictionary
 all_data["annual_data"] = annual_df
+logging.info("Annual data fetched.")
 
 
 # Fed Supply Chain Index Data
@@ -553,6 +572,7 @@ supply = supply.set_index("Date")
 supply.index = pd.to_datetime(supply.index, format='mixed')
 # Add to dictionary
 all_data["fed_supply_chain"] = supply
+logging.info("Supply Chain data fetched.")
 
 
 # Shiller CAPE
@@ -589,6 +609,7 @@ except:
 # Add to dictionary
 if shiller is not None:
     all_data["shiller_data"] = shiller
+    logging.info("Shiller data fetched.")
 
         
 
@@ -635,16 +656,24 @@ last = crypto.index[-1]
 crypto_api = crypto_api[crypto_api.index > last]
 crypto_merged = pd.concat([crypto, crypto_api], axis=0)
 all_data["crypto"] = crypto_merged
+logging.info("Crypto data fetched.")
 
 
 
+# Add ISM data to SQL on initial run
+if args.initial:
+    # Read from Excel file
+    ism = pd.read_excel(os.path.join(os.getcwd(),"data","manual_data.xlsx"), sheet_name="ISM")
+    ism.to_sql("ism", engine, if_exists='replace', index=True)
+    logging.info("ISM table created.")
+    
 # Loop through each dataframe in the dictionary and add to SQL database
 for table_name, df in all_data.items():
-    
+    # If --initial argument is used, create new tables in database
     if args.initial:
         # Replace the table with the full dataset
         df.to_sql(table_name, engine, if_exists='replace', index=True)
-        logging.info(f"Table {table_name} created.")
+        logging.info(f"Table '{table_name}' created.")
     else:
         # Incremental load: insert only new rows
         latest_date_query = f"""SELECT MAX("Date") FROM {table_name};"""
@@ -655,6 +684,14 @@ for table_name, df in all_data.items():
         
         if not df.empty:
             df.to_sql(table_name, engine, if_exists='append', index=True)
-            logging.info(f"Appended {len(df)} new rows to {table_name}.")
+            logging.info(f"Appended {len(df)} new rows to '{table_name}'.")
         else:
-            logging.info(f"No new data for {table_name}.")
+            logging.info(f"No new data for '{table_name}'.")
+            
+
+# Save to Excel if in debug mode
+if args.debug:
+    with pd.ExcelWriter(os.path.join(os.getcwd(),"data","data_debug.xlsx"), engine="xlsxwriter") as data_writer:
+        for sheet_name, df in all_data.items():
+            df.to_excel(data_writer, sheet_name=sheet_name)
+    logging.info("Debug data saved to Excel.")
