@@ -1,7 +1,4 @@
 import argparse
-import ast
-import csv
-import json
 import logging
 import os
 import pandas as pd
@@ -11,16 +8,10 @@ import time
 import yfinance as yf
 import xml.etree.ElementTree as ET
 
-from bs4 import BeautifulSoup
 from datetime import date, datetime, timezone
 from dotenv import load_dotenv
 from fredapi import Fred
 from io import BytesIO
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 from sqlalchemy import create_engine
 
 
@@ -48,86 +39,19 @@ engine = create_engine(f"postgresql://postgres:{POSTGRES_PW}@localhost:5432/macr
 # Create an empty dictionary
 all_data = {}
 
-# BTC & Global M2
-btc_url = "https://charts.bgeometrics.com/files/glm2_btc_price.json"
-gm2_url = "https://charts.bgeometrics.com/graphics/m2_global.html"
-# Fetch the data with a GET request
-try:
-    btc_response = requests.get(btc_url)
-    btc_raw = btc_response.json()
-    btc_prices = [(datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%d"), val) for ts, val in btc_raw]
-    # Add to dataframe
-    df_btc = pd.DataFrame(btc_prices, columns=["Date", "BTC Price"])
+# Global M2 & ISM
+if args.initial:
+    # Read from historical data file
+    historical = pd.read_excel(os.path.join(os.getcwd(),"data","historical_data.xlsx"), sheet_name=None)
+    # Global M2
+    gm2 = historical["Global M2"]
+    gm2 = gm2.set_index("Date")
+    all_data["global_m2"] = gm2
+    # ISM
+    ism = historical["ISM"]
+    ism = ism.set_index("Date")
+    all_data["ism"] = ism
 
-    # Get Global M2
-    # Fetch HTML content
-    response = requests.get(gm2_url)
-    html = response.text
-    # Parse HTML to extract script content
-    soup = BeautifulSoup(html, "html.parser")
-    scripts = soup.find_all("script")
-    # Look for script containing 'const data ='
-    global_m2 = []
-    for script in scripts:
-        if script.string and "const data =" in script.string:
-            # Extract 'data' array (Global M2)
-            data_match = re.search(r"const data\s*=\s*(\[\[.*?\]\]);", script.string, re.DOTALL)
-            if data_match:
-                data_raw = ast.literal_eval(data_match.group(1))  # Use eval safely since we control the source
-                global_m2 = [(datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%d"), val) for ts, val in data_raw]
-    # Add global M2 to dataframe
-    df_m2 = pd.DataFrame(global_m2, columns=["Date", "Global M2"])
-    # Merge dataframes on 'Date'
-    m2_btc_df = pd.merge(df_m2, df_btc, on="Date", how="outer").sort_values("Date")
-    m2_btc_df.set_index("Date", inplace=True)
-    all_data["global_m2_btc"] = m2_btc_df
-    logging.info("BTC and global M2 data fetched.")
-except Exception as e:
-    logging.error(f"Failed to fetch BTC/Global M2 data: \n{e}")
-
-
-# Alternative download of BTC & Global M2 data using Selenium in case the website changes again
-"""
-# Get BTC & Global M2 data
-options = Options()
-options.add_argument("--headless")
-options.add_argument("user-agent=Mozilla/5.0 ...")
-driver = webdriver.Chrome(options=options)
-# Open the website
-url = "https://charts.bgeometrics.com/graphics/m2_global.html"
-driver.get(url)
-try:
-    # Step 1: Click the chart menu button
-    menu_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Chart context menu']")))
-    menu_button.click()
-    # Step 2: Click the "View data table" option
-    view_table_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//li[contains(text(), 'View data table')]")))
-    view_table_button.click()
-    # Step 3: Wait for the data table to appear on the page
-    data_table = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//table")))
-    # Step 4: Extract the table data
-    rows = data_table.find_elements(By.TAG_NAME, "tr")
-    table_data = []
-    for row in rows:
-        # Check for date in <th> and values in <td>
-        date_header = row.find_element(By.TAG_NAME, "th").text if row.find_elements(By.TAG_NAME, "th") else None
-        cols = [col.text for col in row.find_elements(By.TAG_NAME, "td")]
-        # Only add row if it has data
-        if date_header and cols:
-            table_data.append([date_header] + cols)
-    # Convert to DataFrame
-    gm2_btc = pd.DataFrame(table_data, columns=["Date"] + [f"Column {i+1}" for i in range(len(table_data[0]) - 1)])
-    gm2_btc['Date'] = pd.to_datetime(gm2_btc['Date'])
-    gm2_btc.columns = ["Date", "BTC Price", "Global M2 YoY%", "Global M2"]
-    gm2_btc = gm2_btc.set_index("Date")
-    # Add to dictionary
-    all_data["global_m2_btc"] = gm2_btc
-except Exception as e:
-    logging.error(f"Error occurred: {e}")
-finally:
-    # Close the browser
-    driver.quit()
-"""
 
 # Fed Liquidity Data
 FRED_API_KEY = os.getenv("FRED_API_KEY")
@@ -616,12 +540,12 @@ if shiller is not None:
 # Crypto Data
 if args.initial:
     # Read historical data from Excel file
-    crypto = pd.read_excel(os.path.join(os.getcwd(),"data","crypto_historical.xlsx"), sheet_name="Close Price")
+    crypto = pd.read_excel(os.path.join(os.getcwd(),"data","historical_data.xlsx"), sheet_name="Crypto")
     crypto = crypto.set_index("Date")
 else:
     # Read from SQL database
     crypto_query = "SELECT * FROM crypto;"
-    crypto = pd.read_sql(crypto_query, engine)
+    crypto = pd.read_sql(crypto_query, engine, index_col="Date")
 # Get timestamps for today and start date
 today_dt = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
 today_ms = int(today_dt.timestamp())
@@ -659,13 +583,6 @@ all_data["crypto"] = crypto_merged
 logging.info("Crypto data fetched.")
 
 
-
-# Add ISM data to SQL on initial run
-if args.initial:
-    # Read from Excel file
-    ism = pd.read_excel(os.path.join(os.getcwd(),"data","manual_data.xlsx"), sheet_name="ISM")
-    ism.to_sql("ism", engine, if_exists='replace', index=True)
-    logging.info("ISM table created.")
     
 # Loop through each dataframe in the dictionary and add to SQL database
 for table_name, df in all_data.items():
