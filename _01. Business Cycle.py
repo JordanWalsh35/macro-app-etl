@@ -7,49 +7,14 @@ from helper import load_table, plot_datasets, plot_with_constant
 st.set_page_config(page_title="Macro App", layout="wide")
 
 # Load tables
-tables = ["ism", "nasdaq", "monthly_data", "quarterly_data", "global_m2_btc" "model_1", "model_2", "economic_data", "financial_conditions"]
+tables = ["ism", "nasdaq", "monthly_data", "quarterly_data", "crypto", "model_1", "model_2", "economic_data", "financial_conditions"]
 data = {name: load_table(name) for name in tables}
 
-# Read the ISM data & adjust
-ism_df = data["ism"]
-ism_df["New Orders - Inventories"] = ism_df["ISM New Orders"] - ism_df["ISM Inventories"]
-ism = ism_df[ism_df.index > "2007-01-01"].copy()
-# NASDAQ data
-nasdaq_yoy = data["nasdaq"][["Nasdaq YoY%"]]
-nasdaq_yoy = nasdaq_yoy[nasdaq_yoy.index > "2007-01-01"]
-# Future New Orders
-future_orders = data["monthly_data"][["Future New Orders (Philadelphia)"]]
-future_orders = future_orders[future_orders.index > "2007-01-01"]
-# Future Business Activity
-future_business_activity = data["monthly_data"][["Future Business Activity (Texas)"]]
-future_business_activity = future_business_activity[future_business_activity.index > "2007-01-01"]
-# Residential & Domestic Fixed Investment
-residential = data["quarterly_data"][["Private Residential Fixed Investment"]]
-domestic = data["quarterly_data"][["Real Gross Private Domestic Investment"]]
-# Modelling ISM
-model_1 = data["model_1"]
-model_2 = data["model_2"]
-ism1 = ism_df[ism_df.index >= model_1.index[0]].copy()
-ism2 = ism_df[ism_df.index >= model_2.index[0]].copy()
-# Read Building Permit data
-permits = data["economic_data"][["Building Permits"]]
-permits["Permits YoY%"] = permits["Building Permits"].pct_change(periods=12) * 100
-permits_yoy = permits[["Permits YoY%"]].dropna()
-permits_yoy = permits_yoy[permits_yoy.index > "2007-01-01"]
-# Yield Curve data
-yield_curve = data["financial_conditions"][["Yield Curve"]]
-yc = yield_curve[yield_curve.index > "2010-01-01"].copy()
-# Composite Leading Indicator
-CLI = data["monthly_data"][["US Composite Leading Indicator"]]
-CLI = CLI[CLI.index > "2007-01-01"]
-# Read Banks Tightening data
-tightening = data["quarterly_data"][["Net % Banks Tightening: Industrial"]]
-tightening = tightening[tightening.index > "2007-01-01"]
-tightening = tightening * -1
-# EU Business Confidence
-eu_business_confidence = data["monthly_data"][["EU Business Confidence Survey"]]
-eu_business_confidence = eu_business_confidence.dropna()
 
+# Define start dates for charts
+start_date_main = "2007-01-01"
+start_date_yc = "2010-01-01"
+start_date_res = "1990-01-01"
 
 # Split the container into columns to manage content
 col1, col2, col3 = st.columns([1, 4, 1])
@@ -71,7 +36,7 @@ with col2:
     st.markdown("<h4 style='text-align: left;'>ISM PMI vs Nasdaq YoY%</h4>", unsafe_allow_html=True)
     st.write("""This first chart shows how closely year-over-year returns of the Nasdaq are correlated with the ISM PMI. The same chart can of course be replicated for the S&P 500 which follows the same pattern. 
                 This is because stock returns are correlated with corporate earnings, and the natural cyclicality of earnings is tied to the business cycle.""")
-    fig1 = plot_datasets(primary_df=ism, secondary_df=nasdaq_yoy, primary_series="ISM", secondary_series="Nasdaq YoY%", secondary_range=[-60, 80])
+    fig1 = plot_datasets(primary_df=data["ism"], secondary_df=data["nasdaq"], primary_series="ISM", secondary_series="Nasdaq YoY%", start_date=start_date_main , secondary_range=[-60, 80])
     st.plotly_chart(fig1, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 1: ISM PMI vs YoY% Returns of NASDAQ Composite Index</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -83,13 +48,10 @@ with col2:
                 First, as the business cycle strengthens, investor confidence tends to rise, pushing capital further out the risk curve - a dynamic that benefits speculative assets like Bitcoin. 
                 More importantly, as discussed in Section 3 (Liquidity), Bitcoin is highly sensitive to shifts in the money supply. Because liquidity itself tends to expand and contract with the business cycle, 
                 Bitcoin's correlation with the ISM reflects its deeper link to macroeconomic conditions.""")
-    btc_df = data["global_m2_btc"][["BTC Price"]]
-    btc_monthly = btc_df.resample("ME").mean()
-    btc_monthly["BTC YoY%"] = btc_monthly["BTC Price"].pct_change(periods=12) * 100
-    btc_monthly = btc_monthly.drop(columns=["BTC Price"]).dropna(subset=["BTC YoY%"])
-    ism_btc = ism[ism.index > btc_monthly.index[0]]
+    data["crypto"] = data["crypto"].resample("ME").mean()
+    data["crypto"]["BTC YoY%"] = data["crypto"]["BTC"].pct_change(periods=12) * 100
     # Create and show the plot
-    fig2 = plot_datasets(primary_df=ism_btc, secondary_df=btc_monthly, primary_series="ISM", secondary_series="BTC YoY%", primary_range=[40, 70], secondary_range=[-150, 700])
+    fig2 = plot_datasets(primary_df=data["ism"], secondary_df=data["crypto"], primary_series="ISM", secondary_series="BTC YoY%", start_date=data["crypto"].index[0], primary_range=[40, 70], secondary_range=[-150, 700])
     st.plotly_chart(fig2, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 2: ISM vs YoY% Returns of Bitcoin</h6>", unsafe_allow_html=True)
     
@@ -113,13 +75,11 @@ with col2:
                 This spread is particularly valuable because it reflects the balance between demand (new orders) and supply (inventories) within the manufacturing sector. A positive spread indicates that new orders are growing faster than inventories, 
                 suggesting robust demand and likely future production increases. Conversely, a negative spread indicates that inventories are accumulating faster than new orders, signaling potential slowdowns or excess supply. Historically, 
                 this indicator tends to lead the broader ISM PMI because changes in orders relative to inventories often precede adjustments in production levels. As such, monitoring the ISM New Orders Minus Inventories spread can provide early insights into economic momentum and manufacturing cycle shifts.""")
-    new_orders_inventories = ism_df[["New Orders - Inventories"]].copy()
-    new_orders_inventories = new_orders_inventories.dropna()
-    new_orders_inventories["New Orders - Inventories (Smoothed)"] = new_orders_inventories["New Orders - Inventories"].rolling(window=2, center=False).mean()
-    new_orders_inventories.index = new_orders_inventories.index + pd.DateOffset(months=3)
-    new_orders_inventories = new_orders_inventories[new_orders_inventories.index > "2000-01-01"]
-    ism3 = ism_df[ism_df.index > "2000-01-01"].copy()
-    fig3 = plot_datasets(primary_df=ism3, secondary_df=new_orders_inventories, primary_series="ISM", secondary_series="New Orders - Inventories (Smoothed)", primary_range=[35, 70], secondary_range=[-22, 32])
+    ism = data["ism"].copy()
+    ism["New Orders - Inventories"] = ism["ISM New Orders"] - ism["ISM Inventories"]
+    ism["New Orders - Inventories (Smoothed)"] = ism["New Orders - Inventories"].rolling(window=2, center=False).mean()
+    ism.index = ism.index + pd.DateOffset(months=3)
+    fig3 = plot_datasets(primary_df=data["ism"], secondary_df=ism, primary_series="ISM", secondary_series="New Orders - Inventories (Smoothed)", start_date="2000-01-01", primary_range=[35, 70], secondary_range=[-22, 32])
     st.plotly_chart(fig3, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 3: ISM PMI vs ISM New Orders minus ISM Inventories (Pushed 3 Months)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -131,9 +91,10 @@ with col2:
                 As a forward-looking measure, it reflects how firms anticipate changes in production, demand, and economic conditions in the Texas region. An increase in the index indicates optimism and planned expansion, while a decline signals caution or concerns about future business prospects. 
                 Since manufacturers often adjust their expectations before actual shifts in output or orders, this index tends to lead broader economic indicators like the ISM Manufacturing PMI (which is why the data is pushed 3 months). 
                 The raw dataset is quite noisy so this a smoothed 2-month moving average.""")
+    future_business_activity = data["monthly_data"][["Future Business Activity (Texas)"]].copy().dropna()
     future_business_activity["Future Business Activity (Smoothed)"] = future_business_activity["Future Business Activity (Texas)"].rolling(window=2, center=False).mean()
     future_business_activity.index = future_business_activity.index + pd.DateOffset(months=3)
-    fig4 = plot_datasets(primary_df=ism, secondary_df=future_business_activity, primary_series="ISM", secondary_series="Future Business Activity (Smoothed)", primary_range=[35, 70], secondary_range=[-44, 60])
+    fig4 = plot_datasets(primary_df=data["ism"], secondary_df=future_business_activity, primary_series="ISM", secondary_series="Future Business Activity (Smoothed)", start_date=start_date_main, primary_range=[35, 70], secondary_range=[-44, 60])
     st.plotly_chart(fig4, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 4: ISM vs Future Business Activity for Texas District (Pushed 3 Months)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -146,9 +107,10 @@ with col2:
                 while declines signal caution or anticipated slowdowns. Since changes in new orders typically precede actual shifts in manufacturing output, this index often leads broader economic indicators like the ISM Manufacturing PMI. 
                 As such, monitoring the Future New Orders Index can provide early signals of turning points in the business cycle and guide expectations for manufacturing activity. Similar to above, this is also a smoothed 
                 2-month average.""")
+    future_orders = data["monthly_data"][["Future New Orders (Philadelphia)"]].copy()
     future_orders["Future New Orders (Smoothed)"] = future_orders["Future New Orders (Philadelphia)"].rolling(window=2, center=False).mean()
     future_orders.index = future_orders.index + pd.DateOffset(months=6)
-    fig5 = plot_datasets(primary_df=ism, secondary_df=future_orders, primary_series="ISM", secondary_series="Future New Orders (Smoothed)", primary_range=[35, 70], secondary_range=[-25, 80])
+    fig5 = plot_datasets(primary_df=data["ism"], secondary_df=future_orders, primary_series="ISM", secondary_series="Future New Orders (Smoothed)", start_date=start_date_main, primary_range=[35, 70], secondary_range=[-25, 80])
     st.plotly_chart(fig5, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 5: ISM vs Future New Orders for Philadelphia District (Pushed 6 Months)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -162,15 +124,13 @@ with col2:
                 A decline in this ratio typically precedes economic slowdowns, as households become more cautious about large purchases, while an increase suggests renewed confidence and rising housing demand. It typically leads the business cycle by about 9 months, 
                 which gives us considerable insight into how things are likely to play out over a longer timeframe.""")
     # Add domestic investment to main dataframe and calculate residential/domestic ratio
-    residential["Domestic Investment"] = domestic["Real Gross Private Domestic Investment"]
-    residential["Residential % Domestic"] = residential["Private Residential Fixed Investment"] / residential["Domestic Investment"]
+    residential = data["quarterly_data"][["Private Residential Fixed Investment", "Real Gross Private Domestic Investment"]].copy()
+    residential["Residential % Domestic"] = residential["Private Residential Fixed Investment"] / residential["Real Gross Private Domestic Investment"]
     # Get the YoY% change in Residential as % of Domestic
     residential["Residential/Domestic YoY%"] = residential["Residential % Domestic"].pct_change(periods=4) * 100
-    residential = residential[residential.index > "1990-01-01"]
     residential.index = residential.index + pd.DateOffset(months=9)
     # Alter ISM timeframe to 1990
-    ism_res = ism_df[ism_df.index > "1990-09-01"]
-    fig6 = plot_datasets(primary_df=ism_res, secondary_df=residential, primary_series="ISM", secondary_series="Residential/Domestic YoY%", primary_range=[33, 70], secondary_range=[-27, 30])
+    fig6 = plot_datasets(primary_df=data["ism"], secondary_df=residential, primary_series="ISM", secondary_series="Residential/Domestic YoY%", start_date=start_date_res, primary_range=[33, 70], secondary_range=[-27, 30])
     st.plotly_chart(fig6, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 6: ISM vs Residential/Domestic Fixed Investment YoY% (Pushed 9 months)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -191,7 +151,7 @@ with col2:
     st.write("""This model incorporates two key variables: Future New Orders and Residential Investment as a Percentage of Domestic Private Investment. Future New Orders is shifted forward by six months and Residential 
                 Investment by nine months, allowing the model to effectively capture longer-term cyclical trends in the ISM. The training period begins in January 2000, with an 80:20 train-test split. The model achieves a 
                 strong out-of-sample R² of approximately 0.70, and generates forecasts for the ISM six months ahead.""")
-    fig7 = plot_datasets(primary_df=ism1, secondary_df=model_1, primary_series="ISM", secondary_series="ISM Predicted", primary_range=[40, 65], secondary_range=[42, 63])
+    fig7 = plot_datasets(primary_df=data["ism"], secondary_df=data["model_1"], primary_series="ISM", secondary_series="ISM Predicted", start_date=data["model_1"].index[0], primary_range=[40, 65], secondary_range=[42, 63])
     st.plotly_chart(fig7, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 7: Predicting ISM - Model 1 Performance</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -202,7 +162,7 @@ with col2:
     st.write("""This model utilizes Orders Minus Inventories and Future Business Activity, producing a higher out-of-sample R² of 0.76. However, the available data for Future Business Activity only begins in 2004, limiting 
                 the training window. Designed to forecast the ISM four months into the future, this model focuses on capturing shorter-term dynamics, as the Orders–Inventories spread tends to lead ISM by a shorter lag 
                 compared to other macro indicators.""")
-    fig8 = plot_datasets(primary_df=ism2, secondary_df=model_2, primary_series="ISM", secondary_series="ISM Predicted", primary_range=[40, 65], secondary_range=[42, 63])
+    fig8 = plot_datasets(primary_df=data["ism"], secondary_df=data["model_2"], primary_series="ISM", secondary_series="ISM Predicted", start_date=data["model_2"].index[0], primary_range=[40, 65], secondary_range=[42, 63])
     st.plotly_chart(fig8, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 8: Predicting ISM - Model 2 Performance</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -219,12 +179,14 @@ with col2:
     st.write("""Building permits are a leading indicator of the business cycle because they reflect future construction activity and developers' confidence in economic conditions. 
                 Issued before construction begins, building permits signal intentions to start new residential projects, making them highly sensitive to changes in interest rates, credit availability, and consumer demand. 
                 When building permits increase, it indicates optimism about housing demand and economic stability, while a decline suggests caution or reduced confidence.""")
-    permits_yoy.index = permits_yoy.index + pd.DateOffset(months=3)
-    fig9 = plot_datasets(primary_df=ism, secondary_df=permits_yoy, primary_series="ISM", secondary_series="Permits YoY%", primary_range=[40, 70], secondary_range=[-45, 70])
+    permits = data["economic_data"][["Building Permits"]].copy()
+    permits["Permits YoY%"] = permits["Building Permits"].pct_change(periods=12) * 100
+    permits = permits.dropna()
+    permits.index = permits.index + pd.DateOffset(months=3)
+    fig9 = plot_datasets(primary_df=data["ism"], secondary_df=permits, primary_series="ISM", secondary_series="Permits YoY%", start_date=start_date_main, primary_range=[40, 70], secondary_range=[-45, 70])
     st.plotly_chart(fig9, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 9: ISM vs Building Permits YoY% (Pushed 3 Months)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
-    
     
     
     # 10. ISM vs Yield Curve
@@ -233,9 +195,10 @@ with col2:
                 This relationship exists because the yield curve reflects market expectations of future economic conditions. When the curve inverts (short-term rates higher than long-term rates), 
                 it signals that investors expect slower growth or a recession, prompting the Federal Reserve to eventually cut rates. This inversion typically precedes a downturn in the ISM PMI by several months, 
                 as tighter financial conditions and declining confidence gradually filter through to the real economy. As a result, the yield curve is considered a leading indicator, providing an early warning of economic slowdowns and cyclical downturns.""")
-    yc.index = yc.index + pd.DateOffset(months=6)
-    ism_yc = ism_df[ism_df.index > "2010-01-01"].copy()
-    fig10 = plot_datasets(primary_df=ism_yc, secondary_df=yc, primary_series="ISM", secondary_series="Yield Curve", primary_range=[35, 70], secondary_range=[-2, 3.5])
+    yield_curve = data["financial_conditions"][["Yield Curve"]].copy()
+    yield_curve = yield_curve.resample("ME").mean()
+    yield_curve.index = yield_curve.index + pd.DateOffset(months=6)
+    fig10 = plot_datasets(primary_df=data["ism"], secondary_df=yield_curve, primary_series="ISM", secondary_series="Yield Curve", start_date=start_date_yc, primary_range=[35, 70], secondary_range=[-2, 3.5])
     st.plotly_chart(fig10, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 10: ISM vs Yield Curve (Pushed 6 months)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -243,10 +206,10 @@ with col2:
     
     # 11. ISM vs OECD Composite Leading Indicator
     st.markdown("<h4 style='text-align: left;'>OECD Composite Leading Indicator</h4>", unsafe_allow_html=True)
-    st.write("""The OECD Composite Leading Indicator (CLI) for the United States is a forward-looking economic indicator designed to anticipate turning points in the business cycle. Constructed by the Organisation for Economic Co-operation and Development (OECD), 
+    st.write("""The OECD Composite Leading Indicator (CLI) for the United States is a forward-looking economic indicator designed to anticipate turning points in the business cycle. Constructed by the Organization for Economic Co-operation and Development (OECD), 
                 the CLI combines various economic variables that tend to change before the overall economy, such as production, new orders, and consumer sentiment. This indicator does not give us as much predictive power over the future direction of the ISM when compared with previous indicators, 
                 but since it's smoothed at the peaks and troughs we might be able to get some additional confirmation of when the business cycle is turning by monitoring this chart.""")
-    fig11 = plot_datasets(primary_df=ism, secondary_df=CLI, primary_series="ISM", secondary_series="US Composite Leading Indicator", primary_range=[33, 70], secondary_range=[93, 106])
+    fig11 = plot_datasets(primary_df=data["ism"], secondary_df=data["monthly_data"], primary_series="ISM", secondary_series="US Composite Leading Indicator", start_date=start_date_main, primary_range=[33, 70], secondary_range=[93, 106])
     st.plotly_chart(fig11, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 11: ISM PMI vs OECD Composite Leading Indicator</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -258,7 +221,8 @@ with col2:
                 Derived from the Senior Loan Officer Opinion Survey (SLOOS), this metric reflects how willing banks are to extend credit, particularly for commercial and industrial loans. 
                 This can sometimes lead the business cycle but since the relationship can also be coincident or even lagging during financial panics (e.g. see during Covid in the chart), we will place a lower importance on this metric. 
                 However, it's still good practice to monitor this as it's a very important variable for the financial system.""")
-    fig12 = plot_datasets(primary_df=ism, secondary_df=tightening, primary_series="ISM", secondary_series="Net % Banks Tightening: Industrial", primary_range=[35, 70], secondary_range=[-75, 50])
+    data["quarterly_data"][["Net % Banks Tightening: Industrial"]] = data["quarterly_data"][["Net % Banks Tightening: Industrial"]] * -1
+    fig12 = plot_datasets(primary_df=data["ism"], secondary_df=data["quarterly_data"], primary_series="ISM", secondary_series="Net % Banks Tightening: Industrial", start_date=start_date_main, primary_range=[35, 70], secondary_range=[-75, 50])
     st.plotly_chart(fig12, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 12: ISM vs Net % of Banks Tightening Lending Standards (Industrial Loans, Inverted)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -276,6 +240,6 @@ with col2:
                 0 generally indicate improving business conditions and positive sentiment, while values below 0 suggest deteriorating conditions and pessimism. However, the index's long-term average is often slightly 
                 below 0, reflecting a historical tendency for business sentiment to lean negative, especially during periods of economic uncertainty or slow growth. Therefore, while the 0 level serves as a theoretical 
                 expansion/contraction line, it’s essential to interpret the index within the context of historical averages and cyclical patterns.""")
-    fig13 = plot_with_constant(df=eu_business_confidence, series_name="EU Business Confidence Survey", constant_y=0)
+    fig13 = plot_with_constant(df=data["monthly_data"], series_name="EU Business Confidence Survey", constant_y=0, start_date="1985-01-01")
     st.plotly_chart(fig13, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 13: EU Business Confidence Survey</h6>", unsafe_allow_html=True)
