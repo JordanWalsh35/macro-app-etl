@@ -23,9 +23,12 @@ def load_table(table_name):
     return df
 
 
-def plot_datasets(primary_df, secondary_df, primary_series, secondary_series, primary_range=None, secondary_range=None):
+def plot_datasets(primary_df, secondary_df, primary_series, secondary_series, start_date, primary_range=None, secondary_range=None):
     # Initialize
     fig = make_subplots(specs=[[{"secondary_y": True}]])
+    # Adjust dates
+    primary_df = primary_df[primary_df.index > start_date]
+    secondary_df = secondary_df[secondary_df.index > start_date]
     # Primary Y-axis
     fig.add_trace(go.Scatter(x=primary_df.index, y=primary_df[primary_series], name=primary_series), secondary_y=False)
     # Secondary Y-axis
@@ -44,7 +47,9 @@ def plot_datasets(primary_df, secondary_df, primary_series, secondary_series, pr
     return fig
 
 
-def basic_plot(df, series_name, series_range=None):
+def basic_plot(df, series_name, start_date, series_range=None):
+    # Adjust start date
+    df = df[df.index > start_date]
     # Initialize
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df.index, y=df[series_name], name=series_name))
@@ -56,7 +61,9 @@ def basic_plot(df, series_name, series_range=None):
     return fig
 
 
-def plot_with_constant(df, series_name, constant_y, series_range=None):
+def plot_with_constant(df, series_name, constant_y, start_date, series_range=None):
+    # Adjust start date
+    df = df[df.index > start_date]
     # Initialize
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df.index, y=df[series_name], name=series_name))
