@@ -10,24 +10,8 @@ st.set_page_config(page_title="Macro App", layout="wide")
 tables = ["government_spending", "quarterly_data", "economic_data", "annual_data"]
 data = {name: load_table(name) for name in tables}
 
-# Government Data
-govt = data["government_spending"]
-govt["GDP"] = data["quarterly_data"]["US GDP"]
-govt = govt[govt.index > "1980-01-01"]
-govt["Debt/GDP"] = (govt["Federal Govt Debt"] / govt["GDP"]) * 100
-govt["Interest/Receipts"] = (govt["Interest on Debt"] / govt["Federal Tax & Other Receipts"]) * 100
-govt["Social Benefits/Receipts"] = (govt["Social Benefits Total"] / govt["Federal Tax & Other Receipts"]) * 100
-govt["Defense/Receipts"] = (govt["Defense Spending"] / govt["Federal Tax & Other Receipts"]) * 100
-govt["Interest/Defense"] = (govt["Interest on Debt"] / govt["Defense Spending"]) * 100
-# Labour Force Participation
-labour_force = data["economic_data"][["Labor Force Participation Rate"]]
-labour_force = labour_force[labour_force.index > "1990-01-01"]
-debt_inverted = govt[["Debt/GDP"]] * -1
-debt_inverted = debt_inverted[debt_inverted.index > "1990-01-01"]
-# Population Over 65
-over65 = data["annual_data"]
-# Fertility Rate
-fertility = data["annual_data"][["US Fertility Rate"]]
+# Start date
+govt_start_date = "1980-01-01"
 
 
 # Split the container into columns to manage content
@@ -46,7 +30,8 @@ with col2:
     st.write("""This first chart shows the total Federal debt outstanding divided by GDP. This has been at worryingly high levels for many years now, particularly post-GFC. The highest level it had reached before then was 
                 around 106% after World War II. After the financial crisis it came close to breaking that level, which it eventually did when Covid brought it to new highs of 132%. Studies and empirical research generally 
                 indicate that when a country's debt-to-GDP ratio exceeds 90-100%, it becomes increasingly difficult to reverse and can significantly constrain economic growth.""")
-    fig1 = basic_plot(df=govt, series_name="Debt/GDP")
+    data["government_spending"]["Debt/GDP"] = (data["government_spending"]["Federal Govt Debt"] / data["quarterly_data"]["US GDP"]) * 100
+    fig1 = basic_plot(df=data["government_spending"], series_name="Debt/GDP", start_date=govt_start_date)
     st.plotly_chart(fig1, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 1: Federal Debt as a % of GDP</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -56,7 +41,7 @@ with col2:
     st.markdown("<h4 style='text-align: left;'>Total Federal Spending vs Total Receipts</h4>", unsafe_allow_html=True)
     st.write("""This chart shows total federal spending (annualized) charted against total federal receipts. Total receipts include tax receipts and non-tax income for the Federal Government. As can be seen in the chart, 
                 the gap between receipts and spending is widening over time, and is already at unsustainable levels. Since 2023 there has been a gap of nearly $2 trillion between receipts and spending.""")
-    fig2 = plot_datasets(primary_df=govt, secondary_df=govt, primary_series="Total Federal Spending", secondary_series="Federal Tax & Other Receipts", primary_range=[450, 10000], secondary_range=[450, 10000])
+    fig2 = plot_datasets(primary_df=data["government_spending"], secondary_df=data["government_spending"], primary_series="Total Federal Spending", secondary_series="Federal Tax & Other Receipts", start_date=govt_start_date, primary_range=[450, 10000], secondary_range=[450, 10000])
     st.plotly_chart(fig2, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 2: Total Federal Spending vs Tax Receipts</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -67,7 +52,8 @@ with col2:
     st.write("""Figure 3 shows the interest on the federal debt divided by total receipts. With the sudden growth in debt since Covid and higher interest rates, interest on the debt has spiked to dangerous levels. 
                 While it is true that this ratio was higher in the 1980s due to much higher interest rates at the time, as we saw in Figure 1 the total debt-to-GDP was much lower (around 40-60%) - which is completely 
                 different to the current situation. Issuing more debt to simply pay your interest payments to existing bondholders can be justified much easier at a debt level of 50% of GDP than at 120% of GDP.""")
-    fig3 = basic_plot(df=govt, series_name="Interest/Receipts", series_range=[10, 35])
+    data["government_spending"]["Interest/Receipts"] = (data["government_spending"]["Interest on Debt"] / data["government_spending"]["Federal Tax & Other Receipts"]) * 100
+    fig3 = basic_plot(df=data["government_spending"], series_name="Interest/Receipts", start_date=govt_start_date, series_range=[10, 35])
     st.plotly_chart(fig3, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 3: Interest on Debt as % of Tax Receipts</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -81,7 +67,8 @@ with col2:
                 further down this page. As demographics continue to decline and a larger percentage of the population is retired, social security and health payments will continue to grow and are very hard to walk back. 
                 Furthermore, as economic growth continues to weaken over time due to the larger debt burden, or if there is another recession, more of these payments (unemployment insurance for example) will kick in 
                 automatically. We saw this already in the GFC when this series spiked from 50% to 74% and then again in Covid when it hit 130%.""")
-    fig4 = basic_plot(df=govt, series_name="Social Benefits/Receipts", series_range=[35, 80])
+    data["government_spending"]["Social Benefits/Receipts"] = (data["government_spending"]["Social Benefits Total"] / data["government_spending"]["Federal Tax & Other Receipts"]) * 100
+    fig4 = basic_plot(df=data["government_spending"], series_name="Social Benefits/Receipts", start_date=govt_start_date, series_range=[35, 80])
     st.plotly_chart(fig4, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 4: Social Benefits as % of Tax Receipts</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -91,7 +78,8 @@ with col2:
     st.markdown("<h4 style='text-align: left;'>Defense Spending as % of Total Receipts</h4>", unsafe_allow_html=True)
     st.write("""Defense spending often gets a lot of criticism in the media but we can see in the chart below that defense as a % of receipts has actually seen a steady decline over time. This was as high as 93% in the 1950s, 
                 fell to 40% by the 1980s and is currently around 20%.""")
-    fig5 = basic_plot(df=govt, series_name="Defense/Receipts")
+    data["government_spending"]["Defense/Receipts"] = (data["government_spending"]["Defense Spending"] / data["government_spending"]["Federal Tax & Other Receipts"]) * 100
+    fig5 = basic_plot(df=data["government_spending"], series_name="Defense/Receipts", start_date=govt_start_date)
     st.plotly_chart(fig5, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 5: Defense Spending as % of Tax Receipts</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -103,7 +91,8 @@ with col2:
                 risks ceasing to be a great power. This has become relevant again recently given that the chart shows this value to now be once again over 100%, which means more is being spend on interest payments than defense. 
                 This did already break 100% in 1998 and fell to as low as 44% in 2010 which shows that it has been reversed in the past. However, given everything else already mentioned earlier, the current situation is far 
                 more precarious.""")
-    fig6 = basic_plot(df=govt, series_name="Interest/Defense")
+    data["government_spending"]["Interest/Defense"] = (data["government_spending"]["Interest on Debt"] / data["government_spending"]["Defense Spending"]) * 100
+    fig6 = basic_plot(df=data["government_spending"], series_name="Interest/Defense", start_date=govt_start_date)
     st.plotly_chart(fig6, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 6: Interest on Debt as % of Defense Spending</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -126,7 +115,7 @@ with col2:
                 the largest generation, and as shown below the fertility rate has had a steady decline. Of course, another argument that some make is that another reason for labour force participation declining is due to the 
                 decline in economic growth over time, caused by an overreaching government and inflationary monetary system. Regardless of the cause, the chart shows how lower labour force participation rates correspond to 
                 a greater government debt burden.""")
-    fig7 = plot_datasets(primary_df=labour_force, secondary_df=debt_inverted, primary_series="Labor Force Participation Rate", secondary_series="Debt/GDP", primary_range=[59.5, 70], secondary_range=[-140, -25])
+    fig7 = plot_datasets(primary_df=data["economic_data"], secondary_df=data["government_spending"] * -1, primary_series="Labor Force Participation Rate", secondary_series="Debt/GDP", start_date="1990-01-01", primary_range=[59.5, 70], secondary_range=[-140, -25])
     st.plotly_chart(fig7, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 7: Labour Force Participation vs Debt/GDP (Inverted)</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -135,7 +124,7 @@ with col2:
     # 8. US Fertility Rate
     st.markdown("<h4 style='text-align: left;'>US Fertility Rate</h4>", unsafe_allow_html=True)
     st.write("""Here we have the US fertility rate mentioned earlier, which is now far below replacement level and falling steadily since 2007.""")
-    fig8 = basic_plot(df=fertility, series_name="US Fertility Rate")
+    fig8 = basic_plot(df=data["annual_data"], series_name="US Fertility Rate", start_date=data["annual_data"].index[0])
     st.plotly_chart(fig8, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 8: US Fertility Rate</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -148,6 +137,6 @@ with col2:
                 there. Japan may be a guide of how far this issue will go for other countries facing the same problem. If the US continues to follow in Japan's footsteps, is there any way to avoid a debt crisis when nearly a 
                 third of the population needs to be supported by a falling working population? In the 1950s, there were about 16.5 workers per retiree, in 2000 this had fallen to 3.4, in 2022 it was 2.8 and by 2035 it is 
                 projected to hit 2.1. In Japan this is even worse, in 2015 there were 1.8 working age individuals (ages 15-64) per person aged 65+, this is projected to fall to 1.3 by 2050.""")
-    fig9 = basic_plot(df=over65, series_name="US % Population 65+")
+    fig9 = basic_plot(df=data["annual_data"], series_name="US % Population 65+", start_date=data["annual_data"].index[0])
     st.plotly_chart(fig9, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 9: Percentage of Population Aged 65+</h6>", unsafe_allow_html=True)

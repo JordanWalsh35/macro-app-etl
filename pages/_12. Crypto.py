@@ -33,8 +33,7 @@ with col2:
     st.markdown("<h4 style='text-align: left;'>ETH/BTC Ratio</h4>", unsafe_allow_html=True)
     st.write("""The ETH/BTC ratio measures the relative strength of Ethereum (ETH) against Bitcoin (BTC). When the ratio rises, Ethereum is outperforming Bitcoin, often indicating growing interest in altcoins or decentralized 
                 applications. Conversely, a declining ETH/BTC ratio typically signals Bitcoin dominance and a more risk-off environment.""")
-    eth_btc = crypto[["ETH/BTC"]].copy().dropna()
-    fig1 = basic_plot(df=eth_btc, series_name="ETH/BTC")
+    fig1 = basic_plot(df=crypto, series_name="ETH/BTC", start_date="2015-08-01")
     st.plotly_chart(fig1, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 1: ETH/BTC Ratio</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -46,8 +45,7 @@ with col2:
                 difference in the relative performances. SOL has been much stronger against BTC over this recent cycle than ETH has been, which we can see more clearly in the SOL/ETH chart below. If SOL is becoming 
                 a better indicator of market interest in smart contract platforms due to lack of interest in ETH this cycle, then this ratio is arguably a better gauge of risk-on vs risk-off sentiment. Therefore, SOL/BTC 
                 rising would be reflective of investors going out the risk curve while the ratio going down reflects a flight to safety and higher bitcoin dominance.""")
-    sol_btc = crypto[["SOL/BTC"]].copy().dropna()
-    fig2 = basic_plot(df=sol_btc, series_name="SOL/BTC")
+    fig2 = basic_plot(df=crypto, series_name="SOL/BTC", start_date="2020-04-01")
     st.plotly_chart(fig2, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 2: SOL/BTC Ratio</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -57,8 +55,7 @@ with col2:
     st.markdown("<h4 style='text-align: left;'>SOL/ETH Ratio</h4>", unsafe_allow_html=True)
     st.write("""Here we have the price of SOL relative to ETH. As discussed above, this chart has been incredibly bullish over this cycle which indicates the SOL is massively outperforming ETH. This has also been reflected 
                 in blockchain fundamentals with Solana gaining market share in DeFi & other applications, higher revenue earned by the chain and a decline in the revenue earned by Ethereum since moving execution to Layer 2s.""")
-    sol_eth = crypto[["SOL/ETH"]].copy().dropna()
-    fig3 = basic_plot(df=sol_eth, series_name="SOL/ETH")
+    fig3 = basic_plot(df=crypto, series_name="SOL/ETH", start_date="2020-04-01")
     st.plotly_chart(fig3, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 3: SOL/ETH Ratio</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -68,7 +65,6 @@ with col2:
     st.markdown("<h4 style='text-align: left;'>SUI/SOL Ratio</h4>", unsafe_allow_html=True)
     st.write("""SUI is a newer competitor in the L1 space but has had very strong fundamentals this cycle and many are claiming it will be to this cycle what Solana was to the 2021 cycle. Therefore, it may be valuable to 
                 track the relative performance of SUI compared to SOL to see which asset outperforms this cycle.""")
-    sui_sol = crypto[["SUI/SOL"]].copy().dropna()
-    fig4 = basic_plot(df=sui_sol, series_name="SUI/SOL")
+    fig4 = basic_plot(df=crypto, series_name="SUI/SOL", start_date="2023-06-01")
     st.plotly_chart(fig4, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 4: SUI/SOL Ratio</h6>", unsafe_allow_html=True)

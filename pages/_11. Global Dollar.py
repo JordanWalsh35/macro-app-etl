@@ -12,23 +12,6 @@ st.set_page_config(page_title="Macro App", layout="wide")
 tables = ["financial_conditions", "debt_securities", "dollar_reserves", "quarterly_data", "nasdaq"]
 data = {name: load_table(name) for name in tables}
 
-# USD Index
-usd = data["financial_conditions"][["USD"]]
-usd = usd[usd.index > "2016-01-01"]
-# Debt Securities
-debt_securities = data["debt_securities"]
-debt_securities["% Debt USD"] = (debt_securities["USD Debt"] / debt_securities["Total Debt"]) * 100
-# Dollar Reserves
-dollar_reserves = data["dollar_reserves"]
-# Current Account
-current_account = data["quarterly_data"][["Current Account", "US GDP"]]
-current_account = current_account.dropna()
-current_account["Current Account"] = current_account["Current Account"] / 1000
-current_account["Current Account / GDP"] = (current_account["Current Account"] / current_account["US GDP"]) * 100
-# Nasdaq
-nasdaq = data["nasdaq"]
-nasdaq = nasdaq[nasdaq.index > "2003-07-01"]
-
 
 # Split the container into columns to manage content
 col1, col2, col3 = st.columns([1, 4, 1])  # 3-column layout: center column is widest
@@ -47,7 +30,7 @@ with col2:
     st.write("""The chart below tracks the dominance of the dollar in global reserves on a quarterly basis since 1999. This data provided by the IMF shows a clear downward trend over time and many commentators 
                 have pointed to this as evidence that the dollar's days of global dominance are numbered. At the very least, it looks like the trend is towards a multi-polar world where a greater percentage of FX reserves 
                 are held in other currencies.""")
-    fig1 = basic_plot(df=dollar_reserves, series_name="Dollar % Reserves")
+    fig1 = basic_plot(df=data["dollar_reserves"], series_name="Dollar % Reserves", start_date="1999-03-01")
     st.plotly_chart(fig1, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 1: USD % of Global FX Reserves</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -61,7 +44,8 @@ with col2:
                 This figure hit a low of 28% in 2008 but has been rising since. Notably, shifts in this metric tend to correlate with the value of the dollar itself. The secular dollar bull markets from 1980 to 1985 and 
                 from 2009 to the present are both reflected in the chart, each corresponding to a rise in dollar-denominated debt. This dynamic exists because debt issuance in a currency creates demand for it — particularly 
                 in times of crisis — while at the same time, global demand for a currency encourages new debt issuance in that denomination.""")
-    fig2 = basic_plot(df=debt_securities, series_name="% Debt USD")
+    data["debt_securities"]["% Debt USD"] = (data["debt_securities"]["USD Debt"] / data["debt_securities"]["Total Debt"]) * 100
+    fig2 = basic_plot(df=data["debt_securities"], series_name="% Debt USD", start_date="1967-03-01")
     st.plotly_chart(fig2, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 2: USD % of International Debt Securities</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -72,7 +56,7 @@ with col2:
     st.write("""The chart below shows the Nominal Broad U.S. Dollar Index, which reflects the dollar’s value against a weighted basket of foreign currencies. As discussed above, the dollar has been in a secular bull market 
                 since 2009, despite the decline in the dollar's share of FX reserves. As mentioned one explanation for this could be the increase in dollar-denominated debt over the same time period, creating a demand for 
                 dollars to service these debts. Another is the strong demand for U.S. financial assets, as global investors seek higher returns and perceived safety in U.S. markets.""")
-    fig3 = basic_plot(df=usd, series_name="USD")
+    fig3 = basic_plot(df=data["financial_conditions"], series_name="USD", start_date="2016-01-01")
     st.plotly_chart(fig3, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 3: Nominal Broad U.S. Dollar Index</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -84,7 +68,9 @@ with col2:
                 the fact that the U.S. imports more goods, services, and capital than it exports—something made possible by the dollar’s status as the global reserve currency. This status allows the U.S. to finance deficits 
                 by issuing dollar-denominated assets that are in high demand globally. However, sustained deficits also imply a growing reliance on foreign capital inflows, which ties the stability of financial markets to 
                 the continued global confidence in the dollar and U.S. assets.""")
-    fig4 = basic_plot(df=current_account, series_name="Current Account / GDP")
+    data["quarterly_data"]["Current Account"] = data["quarterly_data"]["Current Account"] / 1000
+    data["quarterly_data"]["Current Account / GDP"] = (data["quarterly_data"]["Current Account"] / data["quarterly_data"]["US GDP"]) * 100
+    fig4 = basic_plot(df=data["quarterly_data"], series_name="Current Account / GDP", start_date="1999-03-01")
     st.plotly_chart(fig4, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 4: US Current Account as a % of GDP</h6>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -96,9 +82,9 @@ with col2:
                 flowing in to chase U.S. market performance. The chart compares the year-over-year returns of the Nasdaq with the year-over-year percentage change in the current account balance. A positive % change indicates 
                 that the deficit is widening (becoming more negative), while a negative change reflects an improving balance. Notably, the relationship reveals that Nasdaq returns tend to lead changes in the current account, 
                 which is why the current account data has been shifted backward by six months on the chart. This suggests that market gains come first, followed by capital inflows from abroad reacting to those returns.""")
-    current_account = current_account[current_account.index > "2003-01-01"]
+    current_account = data["quarterly_data"].copy()
     current_account["Current Account YoY%"] = current_account["Current Account"].pct_change(periods=4, fill_method=None) * 100
     current_account.index = current_account.index + pd.DateOffset(months=-6)
-    fig5 = plot_datasets(primary_df=current_account, secondary_df=nasdaq, primary_series="Current Account YoY%", secondary_series="Nasdaq YoY%", primary_range=[-75, 100], secondary_range=[-60, 100])
+    fig5 = plot_datasets(primary_df=current_account, secondary_df=data["nasdaq"], primary_series="Current Account YoY%", secondary_series="Nasdaq YoY%", start_date="2003-07-01", primary_range=[-75, 100], secondary_range=[-60, 100])
     st.plotly_chart(fig5, use_container_width=False)
     st.markdown("<h6 style='text-align: center;'>Figure 5: Change in Current Account vs Nasdaq Returns</h6>", unsafe_allow_html=True)
