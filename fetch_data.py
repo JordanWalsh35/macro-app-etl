@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime, timezone
 from dotenv import load_dotenv
 from fredapi import Fred
+from helper import load_table
 from io import BytesIO
 from sqlalchemy import create_engine
 
@@ -544,8 +545,7 @@ if args.initial:
     crypto = crypto.set_index("Date")
 else:
     # Read from SQL database
-    crypto_query = "SELECT * FROM crypto;"
-    crypto = pd.read_sql(crypto_query, engine, index_col="Date")
+    crypto = load_table("crypto")
 # Get timestamps for today and start date
 today_dt = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
 today_ms = int(today_dt.timestamp())
