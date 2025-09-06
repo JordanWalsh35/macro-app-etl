@@ -3,7 +3,6 @@ import logging
 import os
 import pandas as pd
 import requests
-import re
 import time
 import yfinance as yf
 import xml.etree.ElementTree as ET
@@ -11,7 +10,7 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime, timezone
 from dotenv import load_dotenv
 from fredapi import Fred
-from helper import load_table
+from helper import get_engine, load_table
 from io import BytesIO
 from sqlalchemy import create_engine
 
@@ -33,10 +32,7 @@ logging.basicConfig(
 )
 
 # Define the SQL engine
-load_dotenv()
-POSTGRES_PW = os.getenv("POSTGRES_PW")
-engine = create_engine(f"postgresql://postgres:{POSTGRES_PW}@localhost:5432/macro_data")
-
+engine = get_engine("etl_writer_pw")
 # Create an empty dictionary
 all_data = {}
 

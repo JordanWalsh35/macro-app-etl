@@ -1,24 +1,26 @@
-import os
+import boto3, json, os
 import pandas as pd
 import plotly.graph_objects as go
 
-from dotenv import load_dotenv
 from plotly.subplots import make_subplots
 from sqlalchemy import create_engine
 
-# Load key for SQL database
-load_dotenv()
-POSTGRES_PW = os.getenv('POSTGRES_PW')
+# Load SQL database
+def get_secret(secret_name, region_name="us-west-2"):
+    client = boto3.client("secretsmanager", region_name=region_name)
+    resp = client.get_secret_value(SecretId=secret_name)
+    return json.loads(resp["SecretString"])
 
-def get_engine():
+def get_engine(user_secret):
     # Opens connection to database
+    creds = get_secret(user_secret)
     return create_engine(
-        f"postgresql://postgres:{POSTGRES_PW}@localhost:5432/macro_data"
+        f"postgresql://{creds['DB_USER']}:{creds['DB_PASS']}@{creds['DB_HOST']}:{creds['DB_PORT']}/{creds['DB_NAME']}"
     )
     
 def load_table(table_name):
     # Loads a table from the database
-    engine = get_engine()
+    engine = get_engine(user_secret="etl_readonly_pw")
     df = pd.read_sql_table(table_name, con=engine, index_col="Date", parse_dates=["Date"])
     return df
 
