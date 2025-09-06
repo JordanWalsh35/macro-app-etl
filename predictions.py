@@ -4,7 +4,7 @@ import streamlit as st
 
 from dotenv import load_dotenv
 from fredapi import Fred
-from helper import load_table
+from helper import get_engine, load_table
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -94,8 +94,7 @@ model_1 = make_predictions(input_df=inputs, data_lag=6, start_date="2000-01-01",
 model_2 = make_predictions(input_df=inputs, data_lag=4, start_date="2005-03-01", variables=["Orders - Inventories", "Future Business Activity"])
 
 # Define the SQL engine
-POSTGRES_PW = os.getenv("POSTGRES_PW")
-engine = create_engine(f"postgresql://postgres:{POSTGRES_PW}@localhost:5432/macro_data")
+engine = get_engine("etl_writer_pw")
 
 # Create dictionary and save to SQL
 predictions = {"model_1": model_1, "model_2": model_2}
