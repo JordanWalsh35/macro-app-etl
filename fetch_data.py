@@ -35,19 +35,6 @@ engine = get_engine("etl_writer_pw")
 # Create an empty dictionary
 all_data = {}
 
-# Global M2 & ISM
-if args.initial:
-    # Read from historical data file
-    historical = pd.read_excel(os.path.join(os.getcwd(),"data","historical_data.xlsx"), sheet_name=None)
-    # Global M2
-    gm2 = historical["Global M2"]
-    gm2 = gm2.set_index("Date")
-    all_data["global_m2"] = gm2
-    # ISM
-    ism = historical["ISM"]
-    ism = ism.set_index("Date")
-    all_data["ism"] = ism
-
 
 # Fed Liquidity Data
 load_dotenv()
@@ -532,6 +519,17 @@ if shiller is not None:
     all_data["shiller_data"] = shiller
     logging.info("Shiller data fetched.")
 
+
+# Global M2 & ISM => Read from historical data file
+historical = pd.read_excel(os.path.join(os.getcwd(),"data","historical_data.xlsx"), sheet_name=None)
+# Global M2
+gm2 = historical["Global M2"]
+gm2 = gm2.set_index("Date")
+all_data["global_m2"] = gm2
+# ISM
+ism = historical["ISM"]
+ism = ism.set_index("Date")
+all_data["ism"] = ism
         
 
 # Crypto Data
