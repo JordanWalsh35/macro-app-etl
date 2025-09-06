@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 from fredapi import Fred
 from helper import get_engine, load_table
 from io import BytesIO
-from sqlalchemy import create_engine
 
 
 # Add parser logic to differentiate between initial run and update runs
@@ -51,6 +50,7 @@ if args.initial:
 
 
 # Fed Liquidity Data
+load_dotenv()
 FRED_API_KEY = os.getenv("FRED_API_KEY")
 # Initialize FRED API
 fred = Fred(api_key=FRED_API_KEY)
