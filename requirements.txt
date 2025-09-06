@@ -1,3 +1,4 @@
+boto3==1.40.23
 fredapi==0.5.2
 pandas==2.3.1
 plotly==6.0.1
