@@ -1,10 +1,13 @@
 boto3==1.40.23
 fredapi==0.5.2
+openpyxl==3.1.5
 pandas==2.3.1
 plotly==6.0.1
+psycopg2-binary==2.9.10
 python-dotenv==1.1.1
 Requests==2.32.4
 scikit_learn==1.7.1
 SQLAlchemy==2.0.43
 streamlit==1.44.1
+xlrd==2.0.1
 yfinance==0.2.58
