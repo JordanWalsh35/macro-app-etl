@@ -7,7 +7,7 @@ import time
 import yfinance as yf
 import xml.etree.ElementTree as ET
 
-from datetime import date, datetime, timezone
+from datetime import date as dt_date, datetime, timezone
 from dotenv import load_dotenv
 from fredapi import Fred
 from helper import get_engine, load_table
@@ -24,16 +24,18 @@ logging.basicConfig(
     ]
 )
 
+# Define directories
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(BASE_DIR, "data", "historical_data.xlsx")
+
+
 def run_etl(initial=False, debug=False):
     # Define the SQL engine
     engine = get_engine("etl_writer_pw")
     # Create an empty dictionary
     all_data = {}
     # Define today's date
-    today = date.today()
-    # Define directories
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(BASE_DIR, "data", "historical_data.xlsx")
+    today = dt_date.today()
 
     # Fed Liquidity Data
     load_dotenv()
